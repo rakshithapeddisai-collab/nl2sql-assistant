@@ -1,25 +1,47 @@
-def build_prompt(schema_text: str, question: str) -> str:
-    return f"""
-You are a helpful data analyst. Convert the user question into ONE SQL query.
-Rules:
-- Output ONLY SQL (no markdown).
-- Use ONLY tables/columns from the schema.
-- SELECT-only. No data changes.
-- Prefer simple, correct SQL.
-
-Schema:
-{schema_text}
-
-Question:
-{question}
-""".strip()
-
-def call_llm(prompt: str) -> str:
-    # TODO: Replace with your LLM call (OpenAI / Gemini / Claude / local model).
-    # Return raw SQL string.
-    raise NotImplementedError("Connect your LLM provider here.")
-
 def question_to_sql(schema_text: str, question: str) -> str:
-    prompt = build_prompt(schema_text, question)
-    sql = call_llm(prompt)
-    return (sql or "").strip()
+    q = (question or "").strip().lower()
+
+    if not q:
+        return "SELECT * FROM orders LIMIT 20"
+
+    # Monthly revenue trend
+    if "monthly" in q and "revenue" in q:
+        return """
+        SELECT substr(order_date, 1, 7) AS month,
+               SUM(revenue) AS revenue
+        FROM orders
+        GROUP BY substr(order_date, 1, 7)
+        ORDER BY month
+        """.strip()
+
+    # Revenue by region
+    if "revenue" in q and "region" in q:
+        return """
+        SELECT region,
+               SUM(revenue) AS revenue
+        FROM orders
+        GROUP BY region
+        ORDER BY revenue DESC
+        """.strip()
+
+    # Revenue by product
+    if "revenue" in q and "product" in q:
+        return """
+        SELECT product,
+               SUM(revenue) AS revenue
+        FROM orders
+        GROUP BY product
+        ORDER BY revenue DESC
+        """.strip()
+
+    # Top N orders by revenue
+    if "top" in q and "revenue" in q:
+        return """
+        SELECT order_id, order_date, region, product, revenue
+        FROM orders
+        ORDER BY revenue DESC
+        LIMIT 10
+        """.strip()
+
+    # Default fallback
+    return "SELECT * FROM orders LIMIT 20"
