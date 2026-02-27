@@ -6,6 +6,7 @@ from sql_guard import is_select_only
 
 st.set_page_config(page_title="NLP to SQL Assistant", layout="wide")
 st.title("NLP ➜ SQL Analytics Assistant")
+st.caption("Tip: Click once. The app may take a second to generate SQL.")
 
 st.write("Ask questions in plain English. The app generates SQL, runs it, and shows results.")
 
