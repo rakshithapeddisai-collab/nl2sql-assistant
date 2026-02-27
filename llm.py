@@ -1,47 +1,39 @@
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def build_prompt(schema_text: str, question: str) -> str:
+    return f"""
+You are a senior data analyst.
+
+Convert the user's question into ONE valid SQL query.
+
+STRICT RULES:
+- Output ONLY SQL (no markdown, no explanation)
+- Use ONLY tables and columns from the schema
+- Only SELECT statements are allowed
+- Do not hallucinate columns
+- Prefer simple aggregations when appropriate
+
+Schema:
+{schema_text}
+
+User question:
+{question}
+""".strip()
+
 def question_to_sql(schema_text: str, question: str) -> str:
-    q = (question or "").strip().lower()
+    prompt = build_prompt(schema_text, question)
 
-    if not q:
-        return "SELECT * FROM orders LIMIT 20"
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You generate SQL only."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0
+    )
 
-    # Monthly revenue trend
-    if "monthly" in q and "revenue" in q:
-        return """
-        SELECT substr(order_date, 1, 7) AS month,
-               SUM(revenue) AS revenue
-        FROM orders
-        GROUP BY substr(order_date, 1, 7)
-        ORDER BY month
-        """.strip()
-
-    # Revenue by region
-    if "revenue" in q and "region" in q:
-        return """
-        SELECT region,
-               SUM(revenue) AS revenue
-        FROM orders
-        GROUP BY region
-        ORDER BY revenue DESC
-        """.strip()
-
-    # Revenue by product
-    if "revenue" in q and "product" in q:
-        return """
-        SELECT product,
-               SUM(revenue) AS revenue
-        FROM orders
-        GROUP BY product
-        ORDER BY revenue DESC
-        """.strip()
-
-    # Top N orders by revenue
-    if "top" in q and "revenue" in q:
-        return """
-        SELECT order_id, order_date, region, product, revenue
-        FROM orders
-        ORDER BY revenue DESC
-        LIMIT 10
-        """.strip()
-
-    # Default fallback
-    return "SELECT * FROM orders LIMIT 20"
+    sql = response.choices[0].message.content.strip()
+    return sql
